@@ -416,7 +416,7 @@ func (g *Graph) Worker(v *Vertex) error {
 						log.Printf("%s[%s]: CheckApply errored: %v", v.Kind(), v.GetName(), e)
 						if retry == 0 {
 							if obj.Prometheus() != nil {
-								obj.Prometheus().UpdateState(fmt.Sprintf("%v[%v]", v.Kind(), v.GetName()), prometheus.ResStateHardFail)
+								obj.Prometheus().UpdateState(fmt.Sprintf("%v[%v]", v.Kind(), v.GetName()), v.Kind(), prometheus.ResStateHardFail)
 							}
 							// wrap the error in the sentinel
 							v.SendEvent(event.EventExit, &SentinelErr{e})
@@ -425,7 +425,7 @@ func (g *Graph) Worker(v *Vertex) error {
 
 						// update the state to soft here so it is not called when it fails hard
 						if obj.Prometheus() != nil {
-							obj.Prometheus().UpdateState(fmt.Sprintf("%v[%v]", v.Kind(), v.GetName()), prometheus.ResStateSoftFail)
+							obj.Prometheus().UpdateState(fmt.Sprintf("%v[%v]", v.Kind(), v.GetName()), v.Kind(), prometheus.ResStateSoftFail)
 						}
 
 						if retry > 0 { // don't decrement the -1
@@ -438,7 +438,7 @@ func (g *Graph) Worker(v *Vertex) error {
 						return
 					}
 					if obj.Prometheus() != nil {
-						obj.Prometheus().UpdateState(fmt.Sprintf("%v[%v]", v.Kind(), v.GetName()), prometheus.ResStateOK)
+						obj.Prometheus().UpdateState(fmt.Sprintf("%v[%v]", v.Kind(), v.GetName()), v.Kind(), prometheus.ResStateOK)
 					}
 					retry = v.Meta().Retry // reset on success
 					close(done)            // trigger

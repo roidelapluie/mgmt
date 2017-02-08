@@ -143,7 +143,7 @@ func (obj *Prometheus) deleteState(resUuid string) error {
 }
 
 func (obj *Prometheus) UpdateState(resUuid string, rtype string, newState ResState) error {
-	obj.resourcesState[resUuid] = resStateWithKind{"state": newState, "kind": rtype}
+	obj.resourcesState[resUuid] = resStateWithKind{state: newState, kind: rtype}
 	if (newState != ResStateOK) {
 		var strState string
 		if (newState == ResStateSoftFail) {
@@ -168,17 +168,23 @@ func (obj *Prometheus) updateFailingGauge() error {
 	hardFails = make(map[string]float64)
 	for _, v := range obj.resourcesState {
 		if v.state == ResStateSoftFail {
-			if softFails[v.kind] == nil { softFails[v.kind] = 0 }
+			if _, ok := softFails[v.kind] ; ok {
+				softFails[v.kind] = 0
+			}
 			softFails[v.kind] += 1
 		} else if v.state == ResStateHardFail {
-			if hardFails[v.kind] == nil { hardFails[v.kind] = 0 }
+			if _, ok := hardFails[v.kind] ; ok {
+				hardFails[v.kind] = 0
+			}
 			hardFails[v.kind] += 1
 		}
 	}
-	for k, v := softFails {
+	obj.failedResources.Reset()
+	for k, v := range softFails {
 		obj.failedResources.With(prometheus.Labels{"type": k, "kind": "soft"}).Set(v)
 	}
-	for k, v := hardFails {
+	for k, v := range hardFails {
 		obj.failedResources.With(prometheus.Labels{"type": k, "kind": "hard"}).Set(v)
 	}
+	return nil
 }

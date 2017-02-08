@@ -2,6 +2,15 @@
 graph: mygraph
 resources:
   file:
+  - name: file3
+    meta:
+      limit: 5
+      burst: 40
+      retry: 100
+    path: "/tmp/foo22"
+    content: |
+      i am f2
+    state: exists
   - name: file2
     meta:
       limit: .inf
