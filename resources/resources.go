@@ -165,6 +165,7 @@ type Base interface {
 	Started() <-chan struct{}        // returns when the resource has started
 	Starter(bool)
 	Poll(chan *event.Event) error // poll alternative to watching :(
+	Prometheus() *prometheus.Prometheus
 }
 
 // Res is the minimum interface you need to implement to define a new resource.
@@ -194,7 +195,7 @@ type BaseRes struct {
 	events     chan *event.Event
 	converger  converger.Converger // converged tracking
 	cuid       converger.ConvergerUID
-	Prometheus *prometheus.Prometheus
+	prometheus *prometheus.Prometheus
 	prefix     string // base prefix for this resource
 	debug      bool
 	state      ResState
@@ -302,8 +303,8 @@ func (obj *BaseRes) Init() error {
 		obj.Meta().Limit = rate.Inf
 	}
 
-	if obj.Prometheus != nil {
-		if err := obj.Prometheus.AddManagedResource(fmt.Sprintf("%v[%v]", obj.Kind(), obj.GetName()), obj.Kind()); err != nil {
+	if obj.prometheus != nil {
+		if err := obj.prometheus.AddManagedResource(fmt.Sprintf("%v[%v]", obj.Kind(), obj.GetName()), obj.Kind()); err != nil {
 			return errwrap.Wrapf(err, "Could not increase Prometheus counter!")
 		}
 	}
@@ -324,8 +325,8 @@ func (obj *BaseRes) Close() error {
 	if obj.debug {
 		log.Printf("%s[%s]: Close()", obj.Kind(), obj.GetName())
 	}
-	if obj.Prometheus != nil {
-		if err := obj.Prometheus.RemoveManagedResource(fmt.Sprintf("%v[%v]", obj.Kind(), obj.GetName()), obj.kind); err != nil {
+	if obj.prometheus != nil {
+		if err := obj.prometheus.RemoveManagedResource(fmt.Sprintf("%v[%v]", obj.Kind(), obj.GetName()), obj.kind); err != nil {
 			return errwrap.Wrapf(err, "Could not increase Prometheus counter!")
 		}
 	}
@@ -369,7 +370,7 @@ func (obj *BaseRes) Events() chan *event.Event {
 // AssociateData associates some data with the object in question.
 func (obj *BaseRes) AssociateData(data *Data) {
 	obj.converger = data.Converger
-	obj.Prometheus = data.Prometheus
+	obj.prometheus = data.Prometheus
 	obj.prefix = data.Prefix
 	obj.debug = data.Debug
 }
@@ -573,6 +574,12 @@ func (obj *BaseRes) Poll(processChan chan *event.Event) error {
 		}
 	}
 }
+
+// Prometheus returns the prometheus instance.
+func (obj *BaseRes) Prometheus() *prometheus.Prometheus { // am I grouped?
+	return obj.prometheus
+}
+
 
 // ResToB64 encodes a resource to a base64 encoded string (after serialization)
 func ResToB64(res Res) (string, error) {

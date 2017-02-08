@@ -20,6 +20,7 @@
 package prometheus
 
 import (
+	"errors"
 	"net/http"
 
 	errwrap "github.com/pkg/errors"
@@ -45,11 +46,17 @@ type Prometheus struct {
 	Listen string // the listen specification for the net/http server
 
 	managedResources     *prometheus.GaugeVec
-	checkApplyCounter    prometheus.Collector
-	failedResourcesTotal prometheus.Collector
-	failedResources      prometheus.Collector
+	checkApplyTotal      *prometheus.CounterVec
+	failedResourcesTotal *prometheus.CounterVec
+	failedResources      *prometheus.GaugeVec
 
-	resourcesState map[string]ResState
+	resourcesState map[string]resStateWithKind
+}
+
+// resStateWithKind is used to count the failures by kind
+type resStateWithKind struct {
+	state ResState
+	kind string
 }
 
 // Init some parameters - currently the Listen address.
@@ -58,7 +65,7 @@ func (obj *Prometheus) Init() error {
 		obj.Listen = DefaultPrometheusListen
 	}
 
-	obj.resourcesState = make(map[string]ResState)
+	obj.resourcesState = make(map[string]resStateWithKind)
 
 	obj.managedResources = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -69,14 +76,14 @@ func (obj *Prometheus) Init() error {
 	)
 	prometheus.MustRegister(obj.managedResources)
 
-	obj.checkApplyCounter = prometheus.NewCounterVec(
+	obj.checkApplyTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "mgmt_checkapply_total",
 			Help: "Number of CheckApply that have run.",
 		},
 		[]string{"type"}, // File, Svc, ...
 	)
-	prometheus.MustRegister(obj.checkApplyCounter)
+	prometheus.MustRegister(obj.checkApplyTotal)
 
 	obj.failedResourcesTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -116,7 +123,7 @@ func (obj *Prometheus) Stop() error {
 
 func (obj *Prometheus) AddManagedResource(resUuid string, rtype string) error {
 	obj.managedResources.With(prometheus.Labels{"type": rtype}).Inc()
-	if err := obj.UpdateState(resUuid, ResStateOK); err != nil {
+	if err := obj.UpdateState(resUuid, rtype, ResStateOK); err != nil {
 		return errwrap.Wrapf(err, "Can't update the resource status in the map!")
 	}
 	return nil
@@ -135,7 +142,43 @@ func (obj *Prometheus) deleteState(resUuid string) error {
 	return nil
 }
 
-func (obj *Prometheus) UpdateState(resUuid string, newState ResState) error {
-	obj.resourcesState[resUuid] = newState
+func (obj *Prometheus) UpdateState(resUuid string, rtype string, newState ResState) error {
+	obj.resourcesState[resUuid] = resStateWithKind{"state": newState, "kind": rtype}
+	if (newState != ResStateOK) {
+		var strState string
+		if (newState == ResStateSoftFail) {
+			strState = "soft"
+		} else if(newState == ResStateHardFail) {
+			strState = "hard"
+		} else {
+			return errors.New("State should be Soft or Hard failure!")
+		}
+		obj.failedResourcesTotal.With(prometheus.Labels{"type": rtype, "kind": strState}).Inc()
+	}
+	if err := obj.updateFailingGauge(); err != nil {
+		return errwrap.Wrapf(err, "Can't update the failing gauge!")
+	}
 	return nil
+}
+
+func (obj *Prometheus) updateFailingGauge() error {
+	var softFails map[string]float64
+	var hardFails map[string]float64
+	softFails = make(map[string]float64)
+	hardFails = make(map[string]float64)
+	for _, v := range obj.resourcesState {
+		if v.state == ResStateSoftFail {
+			if softFails[v.kind] == nil { softFails[v.kind] = 0 }
+			softFails[v.kind] += 1
+		} else if v.state == ResStateHardFail {
+			if hardFails[v.kind] == nil { hardFails[v.kind] = 0 }
+			hardFails[v.kind] += 1
+		}
+	}
+	for k, v := softFails {
+		obj.failedResources.With(prometheus.Labels{"type": k, "kind": "soft"}).Set(v)
+	}
+	for k, v := hardFails {
+		obj.failedResources.With(prometheus.Labels{"type": k, "kind": "hard"}).Set(v)
+	}
 }
