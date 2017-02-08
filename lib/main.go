@@ -438,10 +438,10 @@ func (obj *Main) Run() error {
 			newGraph.Flags = pgraph.Flags{Debug: obj.Flags.Debug}
 			// pass in the information we need
 			newGraph.AssociateData(&resources.Data{
-				Converger: converger,
+				Converger:  converger,
 				Prometheus: prom,
-				Prefix:    pgraphPrefix,
-				Debug:     obj.Flags.Debug,
+				Prefix:     pgraphPrefix,
+				Debug:      obj.Flags.Debug,
 			})
 
 			// apply the global noop parameter if requested

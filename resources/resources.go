@@ -31,9 +31,9 @@ import (
 	"time"
 
 	// TODO: should each resource be a sub-package?
-	"github.com/purpleidea/mgmt/prometheus"
 	"github.com/purpleidea/mgmt/converger"
 	"github.com/purpleidea/mgmt/event"
+	"github.com/purpleidea/mgmt/prometheus"
 
 	errwrap "github.com/pkg/errors"
 	"golang.org/x/time/rate"
@@ -189,23 +189,23 @@ type BaseRes struct {
 	MetaParams MetaParams       `yaml:"meta"` // struct of all the metaparams
 	Recv       map[string]*Send // mapping of key to receive on from value
 
-	kind      string
-	mutex     *sync.Mutex // locks around sending and closing of events channel
-	events    chan *event.Event
-	converger converger.Converger // converged tracking
-	cuid      converger.ConvergerUID
-	prometheus *prometheus.Prometheus
-	prefix    string // base prefix for this resource
-	debug     bool
-	state     ResState
-	working   bool          // is the Worker() loop running ?
-	started   chan struct{} // closed when worker is started/running
-	isStarted bool          // did the started chan already close?
-	starter   bool          // does this have indegree == 0 ? XXX: usually?
-	isStateOK bool          // whether the state is okay based on events or not
-	isGrouped bool          // am i contained within a group?
-	grouped   []Res         // list of any grouped resources
-	refresh   bool          // does this resource have a refresh to run?
+	kind       string
+	mutex      *sync.Mutex // locks around sending and closing of events channel
+	events     chan *event.Event
+	converger  converger.Converger // converged tracking
+	cuid       converger.ConvergerUID
+	Prometheus *prometheus.Prometheus
+	prefix     string // base prefix for this resource
+	debug      bool
+	state      ResState
+	working    bool          // is the Worker() loop running ?
+	started    chan struct{} // closed when worker is started/running
+	isStarted  bool          // did the started chan already close?
+	starter    bool          // does this have indegree == 0 ? XXX: usually?
+	isStateOK  bool          // whether the state is okay based on events or not
+	isGrouped  bool          // am i contained within a group?
+	grouped    []Res         // list of any grouped resources
+	refresh    bool          // does this resource have a refresh to run?
 	//refreshState StatefulBool // TODO: future stateful bool
 }
 
@@ -302,9 +302,8 @@ func (obj *BaseRes) Init() error {
 		obj.Meta().Limit = rate.Inf
 	}
 
-	
-	if obj.prometheus != nil {
-		if err := obj.prometheus.AddManagedResource(obj.kind); err != nil {
+	if obj.Prometheus != nil {
+		if err := obj.Prometheus.AddManagedResource(fmt.Sprintf("%v[%v]", obj.Kind(), obj.GetName()), obj.Kind()); err != nil {
 			return errwrap.Wrapf(err, "Could not increase Prometheus counter!")
 		}
 	}
@@ -325,8 +324,8 @@ func (obj *BaseRes) Close() error {
 	if obj.debug {
 		log.Printf("%s[%s]: Close()", obj.Kind(), obj.GetName())
 	}
-	if obj.prometheus != nil {
-		if err := obj.prometheus.RemoveManagedResource(obj.kind); err != nil {
+	if obj.Prometheus != nil {
+		if err := obj.Prometheus.RemoveManagedResource(fmt.Sprintf("%v[%v]", obj.Kind(), obj.GetName()), obj.kind); err != nil {
 			return errwrap.Wrapf(err, "Could not increase Prometheus counter!")
 		}
 	}
@@ -370,7 +369,7 @@ func (obj *BaseRes) Events() chan *event.Event {
 // AssociateData associates some data with the object in question.
 func (obj *BaseRes) AssociateData(data *Data) {
 	obj.converger = data.Converger
-	obj.prometheus = data.Prometheus
+	obj.Prometheus = data.Prometheus
 	obj.prefix = data.Prefix
 	obj.debug = data.Debug
 }

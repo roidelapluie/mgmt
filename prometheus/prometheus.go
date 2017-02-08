@@ -21,8 +21,8 @@ package prometheus
 
 import (
 	"net/http"
-	"log"
 
+	errwrap "github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -34,7 +34,7 @@ const DefaultPrometheusListen = "127.0.0.1:9233"
 type ResState int
 
 const (
-	ResStateOK	ResState = iota
+	ResStateOK ResState = iota
 	ResStateSoftFail
 	ResStateHardFail
 )
@@ -44,10 +44,10 @@ const (
 type Prometheus struct {
 	Listen string // the listen specification for the net/http server
 
-	managedResources *prometheus.GaugeVec
-	checkApplyCounter prometheus.Collector
+	managedResources     *prometheus.GaugeVec
+	checkApplyCounter    prometheus.Collector
 	failedResourcesTotal prometheus.Collector
-	failedResources prometheus.Collector
+	failedResources      prometheus.Collector
 
 	resourcesState map[string]ResState
 }
@@ -67,7 +67,6 @@ func (obj *Prometheus) Init() error {
 		},
 		[]string{"type"}, // File, Svc, ...
 	)
-	log.Printf("xxxc %v", obj.managedResources)
 	prometheus.MustRegister(obj.managedResources)
 
 	obj.checkApplyCounter = prometheus.NewCounterVec(
@@ -117,25 +116,26 @@ func (obj *Prometheus) Stop() error {
 
 func (obj *Prometheus) AddManagedResource(resUuid string, rtype string) error {
 	obj.managedResources.With(prometheus.Labels{"type": rtype}).Inc()
-	obj.UpdateState(resUuid, ResStateOK)
+	if err := obj.UpdateState(resUuid, ResStateOK); err != nil {
+		return errwrap.Wrapf(err, "Can't update the resource status in the map!")
+	}
 	return nil
 }
 
 func (obj *Prometheus) RemoveManagedResource(resUuid string, rtype string) error {
 	obj.managedResources.With(prometheus.Labels{"type": rtype}).Dec()
 	if err := obj.deleteState(resUuid); err != nil {
-	
+		return errwrap.Wrapf(err, "Can't remove the resource status from the map!")
 	}
 	return nil
 }
 
 func (obj *Prometheus) deleteState(resUuid string) error {
-	delete obj.resourcesState[resUuid]
+	delete(obj.resourcesState, resUuid)
 	return nil
 }
 
-func (obj *Prometheus) UpdateState(resUuid string, newState string) error {
+func (obj *Prometheus) UpdateState(resUuid string, newState ResState) error {
 	obj.resourcesState[resUuid] = newState
 	return nil
 }
-

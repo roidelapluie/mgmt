@@ -2,19 +2,11 @@
 graph: mygraph
 resources:
   file:
-  - name: file1
-    meta:
-      limit: .inf
-      burst: 0
-    path: "/tmp/mgmt/f1"
-    content: |
-      i am f1
-    state: exists
   - name: file2
     meta:
       limit: .inf
       burst: 0
-    path: "/tmp/mgmt/f2"
+    path: "/tmp/mgmt/a/b/c/f2"
     content: |
       i am f2
     state: exists
