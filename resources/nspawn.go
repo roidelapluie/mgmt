@@ -109,7 +109,7 @@ func (obj *NspawnRes) Init() error {
 func (obj *NspawnRes) Watch(processChan chan *event.Event) error {
 	// this resource depends on systemd ensure that it's running
 	if !systemdUtil.IsRunningSystemd() {
-		return fmt.Errorf("Systemd is not running.")
+		return fmt.Errorf("systemd is not running")
 	}
 
 	// create a private message bus
@@ -174,13 +174,13 @@ func (obj *NspawnRes) Watch(processChan chan *event.Event) error {
 func (obj *NspawnRes) CheckApply(apply bool) (checkOK bool, err error) {
 	// this resource depends on systemd ensure that it's running
 	if !systemdUtil.IsRunningSystemd() {
-		return false, errors.New("Systemd is not running.")
+		return false, errors.New("systemd is not running")
 	}
 
 	// connect to org.freedesktop.machine1.Manager
 	conn, err := machined.New()
 	if err != nil {
-		return false, errwrap.Wrapf(err, "Failed to connect to dbus")
+		return false, errwrap.Wrapf(err, "failed to connect to dbus")
 	}
 
 	// compare the current state with the desired state and perform the

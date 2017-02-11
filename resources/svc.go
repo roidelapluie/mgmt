@@ -64,10 +64,10 @@ func (obj *SvcRes) Default() Res {
 // Validate checks if the resource data structure was populated correctly.
 func (obj *SvcRes) Validate() error {
 	if obj.State != "running" && obj.State != "stopped" && obj.State != "" {
-		return fmt.Errorf("State must be either `running` or `stopped` or undefined.")
+		return fmt.Errorf("state must be either `running` or `stopped` or undefined")
 	}
 	if obj.Startup != "enabled" && obj.Startup != "disabled" && obj.Startup != "" {
-		return fmt.Errorf("Startup must be either `enabled` or `disabled` or undefined.")
+		return fmt.Errorf("startup must be either `enabled` or `disabled` or undefined")
 	}
 	return obj.BaseRes.Validate()
 }
@@ -82,19 +82,19 @@ func (obj *SvcRes) Init() error {
 func (obj *SvcRes) Watch(processChan chan *event.Event) error {
 	// obj.Name: svc name
 	if !systemdUtil.IsRunningSystemd() {
-		return fmt.Errorf("Systemd is not running.")
+		return fmt.Errorf("systemd is not running")
 	}
 
 	conn, err := systemd.NewSystemdConnection() // needs root access
 	if err != nil {
-		return errwrap.Wrapf(err, "Failed to connect to systemd")
+		return errwrap.Wrapf(err, "failed to connect to systemd")
 	}
 	defer conn.Close()
 
 	// if we share the bus with others, we will get each others messages!!
 	bus, err := util.SystemBusPrivateUsable() // don't share the bus connection!
 	if err != nil {
-		return errwrap.Wrapf(err, "Failed to connect to bus")
+		return errwrap.Wrapf(err, "failed to connect to bus")
 	}
 
 	// XXX: will this detect new units?
@@ -214,26 +214,26 @@ func (obj *SvcRes) Watch(processChan chan *event.Event) error {
 // input is true. It returns error info and if the state check passed or not.
 func (obj *SvcRes) CheckApply(apply bool) (checkOK bool, err error) {
 	if !systemdUtil.IsRunningSystemd() {
-		return false, fmt.Errorf("Systemd is not running.")
+		return false, fmt.Errorf("systemd is not running")
 	}
 
 	conn, err := systemd.NewSystemdConnection() // needs root access
 	if err != nil {
-		return false, errwrap.Wrapf(err, "Failed to connect to systemd")
+		return false, errwrap.Wrapf(err, "failed to connect to systemd")
 	}
 	defer conn.Close()
 
 	var svc = fmt.Sprintf("%s.service", obj.Name) // systemd name
 
-	loadstate, err := conn.GetUnitProperty(svc, "LoadState")
+	loadstate, err := conn.GetUnitProperty(svc, "loadState")
 	if err != nil {
-		return false, errwrap.Wrapf(err, "Failed to get load state")
+		return false, errwrap.Wrapf(err, "failed to get load state")
 	}
 
 	// NOTE: we have to compare variants with other variants, they are really strings...
 	var notFound = (loadstate.Value == dbus.MakeVariant("not-found"))
 	if notFound {
-		return false, errwrap.Wrapf(err, "Failed to find svc: %s", svc)
+		return false, errwrap.Wrapf(err, "failed to find svc: %s", svc)
 	}
 
 	// XXX: check svc "enabled at boot" or not status...
@@ -241,7 +241,7 @@ func (obj *SvcRes) CheckApply(apply bool) (checkOK bool, err error) {
 	//conn.GetUnitProperties(svc)
 	activestate, err := conn.GetUnitProperty(svc, "ActiveState")
 	if err != nil {
-		return false, errwrap.Wrapf(err, "Failed to get active state")
+		return false, errwrap.Wrapf(err, "failed to get active state")
 	}
 
 	var running = (activestate.Value == dbus.MakeVariant("active"))
@@ -269,7 +269,7 @@ func (obj *SvcRes) CheckApply(apply bool) (checkOK bool, err error) {
 	}
 
 	if err != nil {
-		return false, errwrap.Wrapf(err, "Unable to change startup status")
+		return false, errwrap.Wrapf(err, "unable to change startup status")
 	}
 
 	// XXX: do we need to use a buffered channel here?
@@ -278,7 +278,7 @@ func (obj *SvcRes) CheckApply(apply bool) (checkOK bool, err error) {
 	if obj.State == "running" {
 		_, err = conn.StartUnit(svc, "fail", result)
 		if err != nil {
-			return false, errwrap.Wrapf(err, "Failed to start unit")
+			return false, errwrap.Wrapf(err, "failed to start unit")
 		}
 		if refresh {
 			log.Printf("%s[%s]: Skipping reload, due to pending start", obj.Kind(), obj.GetName())
