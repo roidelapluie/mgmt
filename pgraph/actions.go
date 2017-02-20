@@ -610,6 +610,7 @@ func (g *Graph) Worker(v *Vertex) error {
 // Start is a main kick to start the graph. It goes through in reverse topological
 // sort order so that events can't hit un-started vertices.
 func (g *Graph) Start(first bool) { // start or continue
+	g.prometheus.UpdatePgraphStartTime()
 	log.Printf("State: %v -> %v", g.setState(graphStateStarting), g.getState())
 	defer log.Printf("State: %v -> %v", g.setState(graphStateStarted), g.getState())
 	t, _ := g.TopologicalSort()
