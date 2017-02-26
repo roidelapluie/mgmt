@@ -22,6 +22,7 @@ package prometheus
 import (
 	"net/http"
 	"strconv"
+	"log"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -101,9 +102,11 @@ func (obj *Prometheus) UpdateCheckApplyTotal(kind string, apply, eventful, error
 // UpdatePgraphStartTime updates the mgmt_pgraph_start_time_seconds metric
 // to the current timestamp.
 func (obj *Prometheus) UpdatePgraphStartTime() error {
+	log.Printf("BAR\n")
 	if obj == nil {
 		return nil // happens when mgmt is launched without --prometheus
 	}
+	log.Printf("FOO\n")
 	obj.pgraphStartTimeSeconds.SetToCurrentTime()
 	return nil
 }
