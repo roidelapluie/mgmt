@@ -3458,6 +3458,20 @@ func (obj *StmtProg) SetScope(scope *interfaces.Scope) error {
 		funcs[fn.Name] = append(funcs[fn.Name], fn)
 	}
 
+	// this should be recursive
+	for _, fnList := range funcs {
+		for _, f := range fnList {
+			fn, ok := f.Func.(*ExprFunc)
+			if !ok {
+				return fmt.Errorf("pivo style")
+			}
+			for _, a := range fn.Args {
+				// Now we need to check if the value is a function..
+				// if it is a function we must add it to funcs[]
+			}
+		}
+	}
+
 	for name, fnList := range funcs {
 		if obj.data.Debug { // TODO: is this message ever useful?
 			obj.data.Logf("prog: set scope: collect: (%+v -> %d): %+v (%T)", name, len(fnList), fnList[0].Func, fnList[0].Func)
